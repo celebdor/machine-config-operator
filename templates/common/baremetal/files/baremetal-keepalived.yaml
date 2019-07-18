@@ -1,28 +1,28 @@
 filesystem: "root"
 mode: 0644
-path: "/etc/kubernetes/manifests/mdns-publisher.yaml"
+path: "/etc/kubernetes/manifests/keepalived.yaml"
 contents:
   inline: |
     kind: Pod
     apiVersion: v1
     metadata:
-      name: mdns-publisher
+      name: keepalived
       namespace: openshift-kni-infra
       creationTimestamp:
       deletionGracePeriodSeconds: 65
       labels:
-        app: kni-infra-mdns
+        app: kni-infra-vrrp
     spec:
       volumes:
       - name: resource-dir
         hostPath:
-          path: "/etc/kubernetes/static-pod-resources/mdns"
+          path: "/etc/kubernetes/static-pod-resources/keepalived"
       - name: kubeconfig
         hostPath:
           path: "/etc/kubernetes/kubeconfig"
       - name: conf-dir
         hostPath:
-          path: "/etc/mdns"
+          path: "/etc/keepalived"
       initContainers:
       - name: render-config
         image: {{ .Images.baremetalRuntimeCfgImage }}
@@ -38,33 +38,42 @@ contents:
         - "{{ .Infra.Status.PlatformStatus.BareMetal.IngressIP }}"
         - "/config"
         - "--out-dir"
-        - "/etc/mdns"
+        - "/etc/keepalived"
         resources: {}
         volumeMounts:
-        - name: kubeconfig
-          mountPath: "/etc/kubernetes/kubeconfig"
         - name: resource-dir
           mountPath: "/config"
+        - name: kubeconfig
+          mountPath: "/etc/kubernetes/kubeconfig"
         - name: conf-dir
-          mountPath: "/etc/mdns"
+          mountPath: "/etc/keepalived"
         imagePullPolicy: IfNotPresent
       containers:
-      - name: mdns-publisher
-        image: {{.Images.mdnsPublisherImage}}
+      - name: keepalived
+        securityContext:
+          privileged: true
+        image: {{.Images.keepalivedImage}}
+        command:
+        - /usr/sbin/keepalived
         args:
-        - "--debug"
+        - "-f"
+        - "/etc/keepalived/keepalived.conf"
+        - "--dont-fork"
+        - "--vrrp"
+        - "--log-detail"
+        - "--log-console"
         resources:
           requests:
             cpu: 150m
             memory: 1Gi
         volumeMounts:
         - name: conf-dir
-          mountPath: "/etc/mdns"
+          mountPath: "/etc/keepalived"
         livenessProbe:
           exec:
             command:
             - pgrep
-            - mdns-publisher
+            - keepalived
           initialDelaySeconds: 10
         terminationMessagePolicy: FallbackToLogsOnError
         imagePullPolicy: IfNotPresent
@@ -73,4 +82,3 @@ contents:
       - operator: Exists
       priorityClassName: system-node-critical
     status: {}
-

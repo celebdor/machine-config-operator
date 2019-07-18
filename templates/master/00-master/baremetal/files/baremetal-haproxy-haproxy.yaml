@@ -15,10 +15,15 @@ contents:
       timeout server       86400s
       timeout tunnel       86400s
     frontend  main
-      bind :7443
+      bind :{{`{{ .LBConfig.LbPort }}`}}
       default_backend masters
+    listen health_check_http_url
+      bind :50936
+      mode http
+      monitor-uri /healthz
+      option dontlognull
     listen stats
-      bind 127.0.0.1:${STAT_PORT}
+      bind 127.0.0.1:{{`{{ .LBConfig.StatPort }}`}}
       mode http
       stats enable
       stats hide-version
@@ -29,5 +34,6 @@ contents:
        option  httpchk GET /healthz HTTP/1.0
        option  log-health-checks
        balance roundrobin
-    ${BACKENDS}
-    
+    {{`{{- range .LBConfig.Backends }}
+       server {{ .Host }} {{ .Address }}:{{ .Port }} weight 1 verify none check check-ssl inter 3s fall 3 rise 3
+    {{- end }}`}}

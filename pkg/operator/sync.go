@@ -160,7 +160,7 @@ func (optr *Operator) syncRenderConfig(_ *renderConfig) error {
 	}
 
 	// create renderConfig
-	optr.renderConfig = getRenderConfig(optr.namespace, string(kubeAPIServerServingCABytes), spec, &imgs.RenderConfigImages, infra.Status.APIServerURL)
+	optr.renderConfig = getRenderConfig(optr.namespace, string(kubeAPIServerServingCABytes), spec, &imgs.RenderConfigImages, infra.Status.APIServerURL, infra)
 	return nil
 }
 
@@ -655,7 +655,7 @@ func (optr *Operator) getGlobalConfig() (*configv1.Infrastructure, *configv1.Net
 	return infra, network, proxy, nil
 }
 
-func getRenderConfig(tnamespace, kubeAPIServerServingCA string, ccSpec *mcfgv1.ControllerConfigSpec, imgs *RenderConfigImages, apiServerURL string) *renderConfig {
+func getRenderConfig(tnamespace, kubeAPIServerServingCA string, ccSpec *mcfgv1.ControllerConfigSpec, imgs *RenderConfigImages, apiServerURL string, infra *configv1.Infrastructure) *renderConfig {
 	return &renderConfig{
 		TargetNamespace:        tnamespace,
 		Version:                version.Raw,
@@ -663,5 +663,6 @@ func getRenderConfig(tnamespace, kubeAPIServerServingCA string, ccSpec *mcfgv1.C
 		Images:                 imgs,
 		APIServerURL:           apiServerURL,
 		KubeAPIServerServingCA: kubeAPIServerServingCA,
+		Infra:                  *infra,
 	}
 }

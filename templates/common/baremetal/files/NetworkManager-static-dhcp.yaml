@@ -1,0 +1,36 @@
+mode: 0755
+path: "/etc/NetworkManager/dispatcher.d/30-static-dhcp"
+contents:
+  inline: |
+    #!/bin/bash
+    set -ex
+
+    if [ ${DHCP4_DHCP_LEASE_TIME:-0} -lt 4294967295 ]
+    then
+        >&2 echo "Not an infinite DHCP4 lease. Ignoring."
+        exit 0
+    fi
+
+    IPS=($IP4_ADDRESS_0)
+    CIDR=${IPS[0]}
+    GATEWAY=${IPS[1]}
+
+    nmcli con mod "$CONNECTION_ID" ipv4.addr "$CIDR"
+    nmcli con mod "$CONNECTION_ID" connection.autoconnect "yes"
+    nmcli con mod "$CONNECTION_ID" ipv4.method "manual"
+    nmcli con mod "$CONNECTION_ID" ipv4.gateway "$GATEWAY"
+    nmcli con mod "$CONNECTION_ID" ipv4.dns "$IP4_NAMESERVERS"
+    if [ -n "$IP4_DOMAINS" ]
+    then
+        nmcli con mod "$CONNECTION_ID" ipv4.dns-search "$IP4_DOMAINS"
+    fi
+    plus=''
+    for i in $(seq 0 $(($IP4_NUM_ROUTES-1)) )
+    do
+        varname="IP4_ROUTE_$i"
+        nmcli con mod "$CONNECTION_ID" ${plus}ipv4.routes "${!varname}"
+        plus='+'
+    done
+
+    # Copy it from the OverlayFS mount to the persistent lowerdir
+    cp "/etc/NetworkManager/system-connections-merged/${CONNECTION_ID}.nmconnection" /etc/NetworkManager/system-connections

@@ -1,0 +1,43 @@
+mode: 0755
+path: "/etc/NetworkManager/dispatcher.d/30-static-dhcp"
+contents:
+  inline: |
+    #!/bin/bash
+    set -ex
+    IFACE="$1"
+    STATUS="$2"
+
+    LEASE_TIME=$(ip -j -6 a show "$IFACE" | jq -r '.[].addr_info[] | select(.scope=="global") | .preferred_life_time')
+
+    if [[ -z "$DHCP6_IP6_ADDRESS" ]]; then
+        >&2 echo "Not a DHCP connection. Ignoring."
+        exit 0
+    fi
+
+    if [[ "$LT" != "0" ]]; then
+        >&2 echo "Not an infinite lease. Ignoring."
+        exit 0
+    fi
+
+    IPS=($IP6_ADDRESS_0)
+    CIDR=${IPS[0]}
+
+    nmcli con mod "$CONNECTION_ID" ipv6.addresses "$CIDR"
+    nmcli con mod "$CONNECTION_ID" connection.autoconnect "yes"
+    nmcli con mod "$CONNECTION_ID" ipv6.method "manual"
+    nmcli con mod "$CONNECTION_ID" ipv6.gateway "$IP6_GATEWAY"
+    nmcli con mod "$CONNECTION_ID" ipv6.dns "$IP6_NAMESERVERS"
+
+    SEARCH_DOMAIN="${DHCP6_FQDN_FQDN#*.}"
+    if [ -n "$SEARCH_DOMAIN" ]; then
+        nmcli con mod "$CONNECTION_ID" ipv6.dns-search "$SEARCH_DOMAIN"
+    fi
+    plus=''
+    for i in $(seq 0 $(($IP6_NUM_ROUTES-1)) ); do
+        varname="IP6_ROUTE_$i"
+        nmcli con mod "$CONNECTION_ID" ${plus}ipv6.routes "${!varname}"
+        plus='+'
+    done
+
+    # Copy it from the OverlayFS mount to the persistent lowerdir
+    cp "/etc/NetworkManager/system-connections-merged/${CONNECTION_ID}.nmconnection" /etc/NetworkManager/system-connections

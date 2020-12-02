@@ -5,6 +5,8 @@ contents:
     #!/bin/bash
     set -ex -o pipefail
 
+    env
+
     if [ ${DHCP4_DHCP_LEASE_TIME:-0} -lt 4294967295 ]
     then
         >&2 echo "Not an infinite DHCP4 lease. Ignoring."

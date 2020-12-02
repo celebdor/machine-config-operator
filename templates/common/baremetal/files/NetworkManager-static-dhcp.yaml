@@ -5,7 +5,11 @@ contents:
     #!/bin/bash
     set -ex -o pipefail
 
-    env
+    if [ -z ${DHCP4_IP_ADDRESS:-} ]
+    then
+        >&2 echo "Not a DHCP4 address. Ignoring."
+        exit 0
+    fi
 
     if [ ${DHCP4_DHCP_LEASE_TIME:-0} -lt 4294967295 ]
     then

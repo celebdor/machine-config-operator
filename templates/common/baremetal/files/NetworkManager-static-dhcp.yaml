@@ -21,20 +21,24 @@ contents:
     CIDR=${IPS[0]}
     GATEWAY=${IPS[1]}
 
-    nmcli con mod "$CONNECTION_ID" ipv4.addr "$CIDR"
-    nmcli con mod "$CONNECTION_ID" connection.autoconnect "yes"
-    nmcli con mod "$CONNECTION_ID" ipv4.method "manual"
-    nmcli con mod "$CONNECTION_ID" ipv4.gateway "$GATEWAY"
-    nmcli con mod "$CONNECTION_ID" ipv4.dns "$IP4_NAMESERVERS"
-    if [ -n "$IP4_DOMAINS" ]
-    then
-        nmcli con mod "$CONNECTION_ID" ipv4.dns-search "$IP4_DOMAINS"
+    TYPE=$(nmcli --get-values connection.type connection "$CONNECTION_ID")
+
+    nmcli c add type "$TYPE" conn.interface "$1" \
+      connection.autoconnect yes \
+      ipv4.addresses "$CIDR" \
+      ipv4.method manual \
+      ipv4.gateway "$GATEWAY" \
+      ipv4.dns "$IP4_NAMESERVERS" \
+      inf-lease-to-static
+
+    if [ -n "$IP4_DOMAINS" ]; then
+        nmcli con mod inf-lease-to-static ipv4.dns-search "$IP4_DOMAINS"
     fi
     plus=''
     for i in $(seq 0 $(($IP4_NUM_ROUTES-1)) )
     do
         varname="IP4_ROUTE_$i"
-        nmcli con mod "$CONNECTION_ID" ${plus}ipv4.routes "${!varname}"
+        nmcli con mod inf-lease-to-static ${plus}ipv4.routes "${!varname}"
         plus='+'
     done
 

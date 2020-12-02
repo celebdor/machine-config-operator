@@ -3,7 +3,7 @@ path: "/etc/NetworkManager/dispatcher.d/30-static-dhcp"
 contents:
   inline: |
     #!/bin/bash
-    set -ex
+    set -ex -o pipefail
 
     if [ ${DHCP4_DHCP_LEASE_TIME:-0} -lt 4294967295 ]
     then
@@ -33,4 +33,4 @@ contents:
     done
 
     # Copy it from the OverlayFS mount to the persistent lowerdir
-    cp "/etc/NetworkManager/system-connections-merged/${CONNECTION_ID}.nmconnection" /etc/NetworkManager/system-connections
+    cp "$CONNECTION_FILENAME" /etc/NetworkManager/system-connections
